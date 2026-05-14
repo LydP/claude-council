@@ -64,7 +64,7 @@ If `[n]`: proceed directly to Step 2.
 
 ```json
 {
-  "session_id": "<YYYYMMDD_HHMMSS>",
+  "session_id": "<descriptive-slug_YYYYMMDD>",
   "topic": "<user's topic>",
   "created_at": "<ISO timestamp>",
   "updated_at": "<ISO timestamp>",
@@ -79,7 +79,7 @@ If `[n]`: proceed directly to Step 2.
 }
 ```
 
-Use the current date/time for the session ID (format: `YYYYMMDD_HHMMSS`).
+Derive the session ID from the topic: extract 3–5 key nouns or verbs, lowercase them, strip punctuation, and join with hyphens. Append `_YYYYMMDD` (today's date) for uniqueness. Examples: "How should I approach hiring for my startup?" → `hiring-startup-approach_20260514`; "Build a content strategy for Q3" → `content-strategy-q3_20260514`. Keep the slug under 40 characters. If the slug would collide with an existing session directory, append `_2`, `_3`, etc.
 
 ---
 
