@@ -5,7 +5,7 @@ This skill generates the session's real-world deliverable — the artifact the c
 ## Directory Layout (relative to project root)
 - `sessions/<session_id>/session.json` — session metadata including `deliverable` spec
 - `sessions/<session_id>/round_001.json`, `round_002.json`, … — round data
-- `sessions/<session_id>/deliverables/` — all deliverable artifacts; path is defined in `session.deliverable.output_path`
+- `sessions/<session_id>/deliverables/round_<NNN>/` — deliverable artifacts organized by round; base filename comes from `session.deliverable.output_path`
 
 ---
 
@@ -58,18 +58,20 @@ Mark the last round as `(latest)`. Wait for user input.
 
 ---
 
-## Step 3: Confirm Overwrite (if applicable)
+## Step 3: Compute Versioned Path and Check for Existing Version
 
-If `deliverable.history` is non-empty (or `deliverable.produced_at` is non-null for legacy sessions), ask:
+Compute the **versioned output path** for the selected round:
+- Extract the directory portion and filename from `session.deliverable.output_path`. Example: from `sessions/<id>/deliverables/tailor-resume.md`, take directory `sessions/<id>/deliverables/` and filename `tailor-resume.md`.
+- Construct: `sessions/<id>/deliverables/round_<NNN>/<filename>` where `<NNN>` is the selected round number zero-padded to three digits (e.g., round 4 → `round_004`).
+
+Attempt to Read the versioned path. If the file already exists, ask:
 
 ```
-This deliverable was produced <N>× — most recently from round <from_round> on <produced_at>.
-Regenerate at: <deliverable.output_path>? [y/n]
+A deliverable from round <N> already exists at: <versioned_path>
+Overwrite it? [y/n]
 ```
 
-For legacy sessions where `deliverable.produced_at` is non-null but `deliverable.history` is absent, substitute "produced previously on <produced_at>" in the prompt.
-
-Wait for user input. If `n`, stop.
+Wait for user input. If `n`, stop. If the file does not exist, proceed without asking.
 
 ---
 
@@ -118,14 +120,14 @@ If the deliverable format is something else (a document, a plan, a design spec, 
 
 ## Step 6: Write Output and Update State
 
-Write the generated artifact to `session.deliverable.output_path`. Create intermediate directories if needed.
+Write the generated artifact to the **versioned path** computed in Step 3 (`sessions/<id>/deliverables/round_<NNN>/<filename>`). Create intermediate directories if needed.
 
-Then Read `sessions/<session_id>/session.json`. If `deliverable.history` does not exist, initialize it as an empty array — and if the legacy `deliverable.produced_at` field is non-null, seed history with `[{"produced_at": "<produced_at value>", "from_round": null}]` first. Append `{"produced_at": "<today's ISO date>", "from_round": <selected round number>}` to `deliverable.history`. Write it back.
+Then Read `sessions/<session_id>/session.json`. If `deliverable.history` does not exist, initialize it as an empty array — and if the legacy `deliverable.produced_at` field is non-null, seed history with `[{"produced_at": "<produced_at value>", "from_round": null}]` first. Append `{"produced_at": "<today's ISO date>", "from_round": <selected round number>, "file_path": "<versioned_path>"}` to `deliverable.history`. Write it back.
 
 Tell the user:
 
 ```
-Deliverable written to: <output_path>
+Deliverable written to: <versioned_path>
 Based on: Round <N> of "<topic>"
 Session state updated: sessions/<session_id>/session.json
 

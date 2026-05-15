@@ -38,7 +38,7 @@ Wait for user input.
 ```
 Topic: <topic>
 Rounds completed: <round_count>
-Deliverable: <deliverable.description> → <deliverable.output_path>  [<history status>]
+Deliverable: <deliverable.description> → <latest history[].file_path, or deliverable.output_path if history is empty or no entry has file_path>  [<history status>]
   (or "No deliverable defined" if deliverable is null)
 ```
 
@@ -418,7 +418,7 @@ ORCHESTRATOR NOTES
 <Your reflection in 2–3 sentences>
 
 DELIVERABLE
-<deliverable.description> → <deliverable.output_path>  [<history status: same computation as Step 1>]
+<deliverable.description> → <latest history[].file_path, or deliverable.output_path if history is empty or no entry has file_path>  [<history status: same computation as Step 1>]
   (Omit this section entirely if deliverable is null)
 ```
 
@@ -486,10 +486,14 @@ Read `sessions/<session_id>/session.json` and extract `deliverable` and `problem
 
 If the user provides a definition, write the `deliverable` field to `session.json` using the same structure as Step 1.5. If they say "none", return to the checkpoint.
 
-**If `deliverable.history` is non-empty** (or `deliverable.produced_at` is non-null for legacy sessions), confirm before re-producing:
-> "This deliverable was produced <N> time(s), most recently from round <from_round> on <produced_at>. Re-produce it?"
+Compute the **versioned output path** for the current round:
+- Extract the directory and filename from `deliverable.output_path`. Example: from `sessions/<id>/deliverables/tailor-resume.md`, take directory `sessions/<id>/deliverables/` and filename `tailor-resume.md`.
+- Construct: `sessions/<id>/deliverables/round_<NNN>/<filename>` where `<NNN>` is `round_num` zero-padded to three digits.
 
-Wait for confirmation. If declined, return to the checkpoint.
+Attempt to Read the versioned path. If it already exists, ask:
+> "A deliverable from round <N> already exists at: <versioned_path>. Re-produce it?"
+
+Wait for confirmation. If declined, return to the checkpoint. If the file does not exist, proceed without asking.
 
 **To produce**, glob `sessions/<session_id>/round_*.json`, read the most recent round file, and extract `synthesis` and `strategist`. Then spawn a `general-purpose` Agent with:
 
@@ -501,7 +505,7 @@ You are producing a concrete artifact as the deliverable from a multi-round deli
 Write the following artifact to disk at the exact path specified. This is the actual thing the user will use — not a summary, not a plan, not a skeleton. Produce it in full.
 
 **Deliverable:** <deliverable.description>
-**Output path:** <deliverable.output_path>
+**Output path:** <versioned_path>
 **Format:** <deliverable.format>
 
 ## Problem Brief
@@ -527,16 +531,16 @@ Write the following artifact to disk at the exact path specified. This is the ac
 
 ## Instructions
 
-- Write the complete artifact to `<deliverable.output_path>`. Do not summarize or truncate.
+- Write the complete artifact to `<versioned_path>`. Do not summarize or truncate.
 - Apply everything from the problem brief, clarifications, synthesis, and proposed approaches.
 - If information required for a high-quality artifact is missing, add a clearly marked `## Open Questions` section at the top listing what's unresolved, then produce the best possible version with what's available.
 - Do not produce a plan for the artifact or explain what you would write. Write it.
 ```
 
-After the agent completes, Read `sessions/<session_id>/session.json`. If `deliverable.history` does not exist, initialize it as an empty array — and if the legacy `deliverable.produced_at` field is non-null, seed history with `[{"produced_at": "<produced_at value>", "from_round": null}]` first. Append `{"produced_at": "<current ISO timestamp>", "from_round": <round_num>}` to `deliverable.history`. Write it back. Then tell the user:
+After the agent completes, Read `sessions/<session_id>/session.json`. If `deliverable.history` does not exist, initialize it as an empty array — and if the legacy `deliverable.produced_at` field is non-null, seed history with `[{"produced_at": "<produced_at value>", "from_round": null}]` first. Append `{"produced_at": "<current ISO timestamp>", "from_round": <round_num>, "file_path": "<versioned_path>"}` to `deliverable.history`. Write it back. Then tell the user:
 
 ```
-Deliverable produced: <deliverable.output_path>
+Deliverable produced: <versioned_path>
 ```
 
 Return to the checkpoint prompt.
@@ -629,9 +633,8 @@ Compile a final structured report. Write it to `sessions/<session_id>/reports/re
 
 [If deliverable.history is non-empty, or legacy deliverable.produced_at is non-null:]
 **Artifact:** <deliverable.description>
-**Path:** <deliverable.output_path>
 **Production history:**
-<For each entry in deliverable.history: "- Round <from_round> — <produced_at>". For legacy sessions with only produced_at, show "- <produced_at> (round unknown)".>
+<For each entry in deliverable.history that has file_path: "- Round <from_round> — <produced_at> → <file_path>". For entries without file_path: "- Round <from_round> — <produced_at>". For legacy entries with only produced_at: "- <produced_at> (round unknown)".>
 
 [If defined but not yet produced:]
 **Defined but not produced:** <deliverable.description> (target: `<deliverable.output_path>`)
