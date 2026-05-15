@@ -27,9 +27,8 @@ Sessions:
 Enter a number (or q to quit):
 ```
 
-Compute the produced annotation from `deliverable.history` (or `deliverable.produced_at` for legacy sessions):
+Compute the produced annotation from `deliverable.history`:
 - `deliverable.history` non-empty: show `[produced <N>× — latest round <from_round>]`
-- `deliverable.history` absent/empty but `deliverable.produced_at` non-null (legacy): show `[produced — legacy]`
 - Otherwise: omit the annotation entirely
 
 Wait for user input. If `q`, stop.
@@ -122,7 +121,7 @@ If the deliverable format is something else (a document, a plan, a design spec, 
 
 Write the generated artifact to the **versioned path** computed in Step 3 (`sessions/<id>/deliverables/round_<NNN>/<filename>`). Create intermediate directories if needed.
 
-Then Read `sessions/<session_id>/session.json`. If `deliverable.history` does not exist, initialize it as an empty array — and if the legacy `deliverable.produced_at` field is non-null, seed history with `[{"produced_at": "<produced_at value>", "from_round": null}]` first. Append `{"produced_at": "<today's ISO date>", "from_round": <selected round number>, "file_path": "<versioned_path>"}` to `deliverable.history`. Write it back.
+Then Read `sessions/<session_id>/session.json`. Append `{"produced_at": "<today's ISO date>", "from_round": <selected round number>, "file_path": "<versioned_path>"}` to `deliverable.history`. Write it back.
 
 Tell the user:
 

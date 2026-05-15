@@ -38,13 +38,12 @@ Wait for user input.
 ```
 Topic: <topic>
 Rounds completed: <round_count>
-Deliverable: <deliverable.description> → <latest history[].file_path, or deliverable.output_path if history is empty or no entry has file_path>  [<history status>]
+Deliverable: <deliverable.description> → <latest history[].file_path if history is non-empty, otherwise deliverable.output_path>  [<history status>]
   (or "No deliverable defined" if deliverable is null)
 ```
 
-Compute `<history status>` from `deliverable.history` (or `deliverable.produced_at` for legacy sessions):
+Compute `<history status>` from `deliverable.history`:
 - `deliverable.history` non-empty: `produced <N>× — latest from round <from_round> on <produced_at>`
-- `deliverable.history` absent/empty but `deliverable.produced_at` non-null (legacy): `produced 1× on <produced_at>`
 - Otherwise: `not yet produced`
 
 Ask: "Continue from round <round_count+1>?" and wait for confirmation. Do not read any round files yet. Skip Step 1.5 — the interview was already completed.
@@ -418,7 +417,7 @@ ORCHESTRATOR NOTES
 <Your reflection in 2–3 sentences>
 
 DELIVERABLE
-<deliverable.description> → <latest history[].file_path, or deliverable.output_path if history is empty or no entry has file_path>  [<history status: same computation as Step 1>]
+<deliverable.description> → <latest history[].file_path if history is non-empty, otherwise deliverable.output_path>  [<history status: same computation as Step 1>]
   (Omit this section entirely if deliverable is null)
 ```
 
@@ -537,7 +536,7 @@ Write the following artifact to disk at the exact path specified. This is the ac
 - Do not produce a plan for the artifact or explain what you would write. Write it.
 ```
 
-After the agent completes, Read `sessions/<session_id>/session.json`. If `deliverable.history` does not exist, initialize it as an empty array — and if the legacy `deliverable.produced_at` field is non-null, seed history with `[{"produced_at": "<produced_at value>", "from_round": null}]` first. Append `{"produced_at": "<current ISO timestamp>", "from_round": <round_num>, "file_path": "<versioned_path>"}` to `deliverable.history`. Write it back. Then tell the user:
+After the agent completes, Read `sessions/<session_id>/session.json`. Append `{"produced_at": "<current ISO timestamp>", "from_round": <round_num>, "file_path": "<versioned_path>"}` to `deliverable.history`. Write it back. Then tell the user:
 
 ```
 Deliverable produced: <versioned_path>
@@ -631,10 +630,10 @@ Compile a final structured report. Write it to `sessions/<session_id>/reports/re
 
 ## Deliverable
 
-[If deliverable.history is non-empty, or legacy deliverable.produced_at is non-null:]
+[If deliverable.history is non-empty:]
 **Artifact:** <deliverable.description>
 **Production history:**
-<For each entry in deliverable.history that has file_path: "- Round <from_round> — <produced_at> → <file_path>". For entries without file_path: "- Round <from_round> — <produced_at>". For legacy entries with only produced_at: "- <produced_at> (round unknown)".>
+<For each entry in deliverable.history: "- Round <from_round> — <produced_at> → <file_path>">
 
 [If defined but not yet produced:]
 **Defined but not produced:** <deliverable.description> (target: `<deliverable.output_path>`)
