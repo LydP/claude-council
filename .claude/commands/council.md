@@ -55,7 +55,7 @@ Add context before starting round <round_count+1>?
   [i] Add information or attach files   [n] Begin round
 ```
 
-If `[i]`: process using the file-attachment logic described in the `[i]` handler (Step 2h) — ask for text and/or file paths, read any attached files, inline their contents, append to `problem_brief.qa_log`, then begin the round.
+If `[i]`: process using the file-attachment logic described in the `[i]` handler (Step 2h) — ask for text and/or file paths, store any file paths by reference (do not inline contents), append to `problem_brief.qa_log`, then begin the round.
 
 If `[n]`: proceed directly to Step 2.
 
@@ -445,27 +445,21 @@ Wait for user input.
 - **r (redirect)**: Ask "What should the deliberation focus on next?" Wait for user input. Add this instruction to your Orchestrator planning context for the next round. Then increment `round_num` and return to Step 2a.
 - **i (add information)**: Ask:
 
-  > "What would you like the council to know? You may include file paths on separate lines — they will be read and inlined. Example:
+  > "What would you like the council to know? You may include file paths on separate lines. Example:
   >
   > Results from the latest deliverable run:
-  > .tailor/output.md
-  > .tailor/gap_disclosure.md"
+  > sessions/my-session/outputs/round_004/gap_assessment.md
+  > sessions/my-session/outputs/round_004/evidence_table.md"
 
-  Wait for user input. For each line that appears to be a file path (starts with `.`, `/`, a drive letter like `C:`, or `~`), attempt to Read it. For each line that resolves to a readable file, replace it with a labeled block:
-
-  ```
-  --- Attached: <path> ---
-  <file contents>
-  ---
-  ```
-
-  For any path that cannot be read, notify the user "Could not read: <path> — skipping" before proceeding. Compose the full answer from the user's text with file contents inlined at their positions. Append to `problem_brief.qa_log`:
+  Wait for user input. For each line that appears to be a file path (starts with `.`, `/`, a drive letter like `C:`, or `~`), verify it is readable with a Read call. For any path that cannot be read, notify the user "Could not read: <path> — skipping" before proceeding. Store only the path — do not inline file contents. Compose the answer from the user's text with file paths left as-is. Append to `problem_brief.qa_log`:
 
   ```json
-  {"round": <N>, "question": "(user-provided context)", "answer": "<composed answer with inlined file contents>"}
+  {"round": <N>, "question": "(user-provided context)", "answer": "<user's text with file paths preserved>", "attached_files": ["<path1>", "<path2>"]}
   ```
 
   Read the current `session.json`, update `problem_brief.qa_log`, and Write it back. Then return to the checkpoint prompt.
+
+  When agents subsequently need the content of attached files, Read them at that point using the paths in `attached_files`.
 - **q (answer questions)**: Present each pending question in sequence and wait for the user to answer. After all answers are collected, append each pair to `problem_brief.qa_log` with the current `round_num`:
   ```json
   {"round": <N>, "question": "<question>", "answer": "<user's answer>"}
@@ -674,6 +668,7 @@ The contrarian angle should ask that perspective's Expert to argue *against* the
 - The Synthesizer surfaces tensions; the Critic exploits them. Let them do their jobs. Don't soften their outputs in summaries.
 - Each agent receives only what it needs. Experts receive the problem brief and prior synthesis context; they do not receive the Critic's prior challenges (that's the Critic's job to track).
 - When saving JSON, preserve the full text of all agent outputs — do not summarize or truncate.
+- When rendering `qa_log` entries for agent prompts, for each entry that has a non-empty `attached_files` array, Read each file in that array and append its contents inline after the answer: `--- Attached: <path> ---\n<contents>\n---`. Do this at the time you build the agent prompt, not at save time — paths are stored in `session.json`, contents are read on demand.
 - Load only what each step requires (see "Context-efficient loading" notes in Steps 2a, 2c, 2e). Never load the full history to extract one field.
 - Surface agent questions sparingly — only if the answer would materially change the analysis. Do not surface every question an agent raises.
 - After the session is saved, the user can resume it in a future conversation by running `/council` again.
